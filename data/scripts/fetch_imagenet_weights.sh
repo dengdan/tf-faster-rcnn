@@ -1,6 +1,7 @@
 #!/bin/bash
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../" && pwd )"
+#DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../" && pwd )"
+DIR=~/models/faster-rcnn
 cd $DIR
 
 FILE=imagenet_weights.tgz
@@ -25,7 +26,7 @@ fi
 
 echo "Downloading pretrained ImageNet VGG16 weights (476M)..."
 
-wget $URL -O $FILE
+proxychains wget $URL -O $FILE
 
 echo "Unzipping..."
 

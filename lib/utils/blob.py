@@ -45,3 +45,4 @@ def prep_im_for_blob(im, pixel_means, target_size, max_size):
                   interpolation=cv2.INTER_LINEAR)
 
   return im, im_scale
+  

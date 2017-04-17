@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../" && pwd )"
+DIR=~/models/faster-rcnn
 cd $DIR
 
 FILE=coco_long.tgz
@@ -25,7 +25,7 @@ fi
 
 echo "Downloading Faster R-CNN models for COCO with longer training (1G)..."
 
-wget $URL -O $FILE
+proxychains wget $URL -O $FILE
 
 echo "Unzipping..."
 

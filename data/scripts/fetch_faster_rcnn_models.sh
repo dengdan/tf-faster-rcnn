@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../" && pwd )"
+DIR=~/models/faster-rcnn
 cd $DIR
 
 FILE=faster_rcnn_models.tgz
@@ -25,7 +25,7 @@ fi
 
 echo "Downloading Faster R-CNN models (2G)..."
 
-wget $URL -O $FILE
+proxychains wget $URL -O $FILE
 
 echo "Unzipping..."
 

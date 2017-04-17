@@ -223,6 +223,7 @@ class SolverWrapper(object):
           sess.run(tf.assign(lr, cfg.TRAIN.LEARNING_RATE))
 
     timer = Timer()
+    io_timer = Timer()
     iter = last_snapshot_iter + 1
     last_summary_time = time.time()
     while iter < max_iters + 1:
@@ -233,11 +234,14 @@ class SolverWrapper(object):
         sess.run(tf.assign(lr, cfg.TRAIN.LEARNING_RATE * cfg.TRAIN.GAMMA))
 
       timer.tic()
+      
       # Get training data, one batch at a time
+      io_timer.tic()
       blobs = self.data_layer.forward()
-
+      io_timer.toc()
+      
       now = time.time()
-      if now - last_summary_time > cfg.TRAIN.SUMMARY_INTERVAL:
+      if now - last_summary_time > 1:#cfg.TRAIN.SUMMARY_INTERVAL:
         # Compute the graph with summary
         rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, total_loss, summary = \
           self.net.train_step_with_summary(sess, blobs, train_op)
@@ -258,6 +262,7 @@ class SolverWrapper(object):
         print('iter: %d / %d, total loss: %.6f\n >>> rpn_loss_cls: %.6f\n '
               '>>> rpn_loss_box: %.6f\n >>> loss_cls: %.6f\n >>> loss_box: %.6f\n >>> lr: %f' % \
               (iter, max_iters, total_loss, rpn_loss_cls, rpn_loss_box, loss_cls, loss_box, lr.eval()))
+        print('io speed: {:.3f}s / iter'.format(io_timer.average_time))
         print('speed: {:.3f}s / iter'.format(timer.average_time))
 
       if iter % cfg.TRAIN.SNAPSHOT_ITERS == 0:
@@ -302,6 +307,8 @@ def get_training_roidb(imdb):
   """Returns a roidb (Region of Interest database) for use in training."""
   if cfg.TRAIN.USE_FLIPPED:
     print('Appending horizontally-flipped training examples...')
+#    import pdb
+#    pdb.set_trace() 
     imdb.append_flipped_images()
     print('done')
 

@@ -17,6 +17,7 @@ from model.config import cfg
 from utils.blob import prep_im_for_blob, im_list_to_blob
 
 def get_minibatch(roidb, num_classes):
+  
   """Given a roidb, construct a minibatch sampled from it."""
   num_images = len(roidb)
   # Sample random scales to use for each image in this batch
@@ -55,6 +56,8 @@ def _get_image_blob(roidb, scale_inds):
   """Builds an input blob from the images in the roidb at the specified
   scales.
   """
+  import pdb
+  pdb.set_trace()
   num_images = len(roidb)
   processed_ims = []
   im_scales = []

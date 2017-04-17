@@ -100,7 +100,7 @@ class Resnet101(Network):
       initializer_bbox = tf.random_normal_initializer(mean=0.0, stddev=0.001)
     bottleneck = resnet_v1.bottleneck
     blocks = [
-      resnet_utils.Block('block1', bottleneck,
+      resnet_utils.Block('block1', bottleneck, #unit_depth, unit_depth_bottleneck, unit_stride= (256, 64, 1), the depth of unit body is 64, and output depth 256
                          [(256, 64, 1)] * 2 + [(256, 64, 2)]),
       resnet_utils.Block('block2', bottleneck,
                          [(512, 128, 1)] * 3 + [(512, 128, 2)]),
@@ -110,6 +110,8 @@ class Resnet101(Network):
       resnet_utils.Block('block4', bottleneck, [(2048, 512, 1)] * 3)
     ]
     assert (0 <= cfg.RESNET.FIXED_BLOCKS < 4)
+
+    mid_output = []
     if cfg.RESNET.FIXED_BLOCKS == 3:
       with slim.arg_scope(resnet_arg_scope(is_training=False)):
         net = self.build_base()
@@ -118,21 +120,28 @@ class Resnet101(Network):
                                            global_pool=False,
                                            include_root_block=False,
                                            scope='resnet_v1_101')
+    
     elif cfg.RESNET.FIXED_BLOCKS > 0:
       with slim.arg_scope(resnet_arg_scope(is_training=False)):
         net = self.build_base()
-        net, _ = resnet_v1.resnet_v1(net,
-                                     blocks[0:cfg.RESNET.FIXED_BLOCKS],
-                                     global_pool=False,
-                                     include_root_block=False,
-                                     scope='resnet_v1_101')
-
+        for i in range(cfg.RESNET.FIXED_BLOCKS):
+            net, _ = resnet_v1.resnet_v1(net,
+                                         [blocks[i]],
+                                         global_pool=False,
+                                         include_root_block=False,
+                                         scope='resnet_v1_101')
+            mid_output.append(net);
+        
       with slim.arg_scope(resnet_arg_scope(is_training=is_training)):
-        net_conv5, _ = resnet_v1.resnet_v1(net,
-                                           blocks[cfg.RESNET.FIXED_BLOCKS:-1],
-                                           global_pool=False,
-                                           include_root_block=False,
-                                           scope='resnet_v1_101')
+        
+        for b in blocks[cfg.RESNET.FIXED_BLOCKS:-1]:
+            net, _ = resnet_v1.resnet_v1(net,
+                                         [b],
+                                         global_pool=False,
+                                         include_root_block=False,
+                                         scope='resnet_v1_101')
+            mid_output.append(net);
+        net_conv5 = net;
     else:  # cfg.RESNET.FIXED_BLOCKS == 0
       with slim.arg_scope(resnet_arg_scope(is_training=is_training)):
         net = self.build_base()
@@ -141,9 +150,9 @@ class Resnet101(Network):
                                            global_pool=False,
                                            include_root_block=False,
                                            scope='resnet_v1_101')
-
     self._act_summaries.append(net_conv5)
     self._layers['conv5_3'] = net_conv5
+    
     with tf.variable_scope('resnet_v1_101', 'resnet_v1_101',
                            regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
       # build the anchors for the image
@@ -182,7 +191,7 @@ class Resnet101(Network):
         pool5 = self._crop_pool_layer(net_conv5, rois, "pool5")
       else:
         raise NotImplementedError
-
+    
     with slim.arg_scope(resnet_arg_scope(is_training=is_training)):
       fc7, _ = resnet_v1.resnet_v1(pool5,
                                    blocks[-1:],
@@ -200,6 +209,11 @@ class Resnet101(Network):
       bbox_pred = slim.fully_connected(fc7, self._num_classes * 4, weights_initializer=initializer_bbox,
                                        trainable=is_training,
                                        activation_fn=None, scope='bbox_pred')
+                                       
+    # segmentation
+    net_conv3, net_conv4, _ = mid_output
+    
+    
     self._predictions["rpn_cls_score"] = rpn_cls_score
     self._predictions["rpn_cls_score_reshape"] = rpn_cls_score_reshape
     self._predictions["rpn_cls_prob"] = rpn_cls_prob

@@ -19,6 +19,7 @@ import scipy.io as sio
 import pickle
 import json
 import uuid
+import util
 # COCO API
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
@@ -50,6 +51,7 @@ def _filter_crowd_proposals(roidb, crowd_thresh):
 class coco(imdb):
   def __init__(self, image_set, year):
     imdb.__init__(self, 'coco_' + year + '_' + image_set)
+
     # COCO specific config options
     self.config = {'top_k': 2000,
                    'use_salt': True,
@@ -59,14 +61,16 @@ class coco(imdb):
     # name, paths
     self._year = year
     self._image_set = image_set
-    self._data_path = osp.join(cfg.DATA_DIR, 'coco')
+    self._data_path = osp.join(cfg.DATA_DIR, 'coco2014')
+
     # load COCO API, classes, class <-> id mappings
     self._COCO = COCO(self._get_ann_file())
     cats = self._COCO.loadCats(self._COCO.getCatIds())
     self._classes = tuple(['__background__'] + [c['name'] for c in cats])
+    # self.classes is self._classes
     self._class_to_ind = dict(list(zip(self.classes, list(range(self.num_classes)))))
-    self._class_to_coco_cat_id = dict(list(zip([c['name'] for c in cats],
-                                               self._COCO.getCatIds())))
+    self._class_to_coco_cat_id = dict(list(zip([c['name'] for c in cats], self._COCO.getCatIds())))
+
     self._image_index = self._load_image_set_index()
     # Default to roidb handler
     self.set_proposal_method('gt')
@@ -98,6 +102,7 @@ class coco(imdb):
     """
     Load image ids.
     """
+    # numbers: [... n1, n2,...]
     image_ids = self._COCO.getImgIds()
     return image_ids
 
@@ -120,7 +125,7 @@ class coco(imdb):
     #   images/train2014/COCO_train2014_000000119993.jpg
     file_name = ('COCO_' + self._data_name + '_' +
                  str(index).zfill(12) + '.jpg')
-    image_path = osp.join(self._data_path, 'images',
+    image_path = osp.join(self._data_path,
                           self._data_name, file_name)
     assert osp.exists(image_path), \
       'Path does not exist: {}'.format(image_path)
@@ -237,15 +242,19 @@ class coco(imdb):
     handled by marking their overlaps (with all categories) to -1. This
     overlap value means that crowd "instances" are excluded from training.
     """
+    # the information of image:
+    #{u'license': 2, u'file_name': u'COCO_train2014_000000262145.jpg', u'coco_url': u'http://mscoco.org/images/262145', u'height': 427, u'width': 640, u'date_captured': u'2013-11-20 02:07:55', u'flickr_url': u'http://farm8.staticflickr.com/7187/6967031859_5f08387bde_z.jpg', u'id': 262145}
     im_ann = self._COCO.loadImgs(index)[0]
     width = im_ann['width']
     height = im_ann['height']
 
+    # many objects in one image
     annIds = self._COCO.getAnnIds(imgIds=index, iscrowd=None)
     objs = self._COCO.loadAnns(annIds)
     # Sanitize bboxes -- some are invalid
     valid_objs = []
     for obj in objs:
+    #{u'segmentation': [[214.27, 79.01, 220.54, 82.35, 235.99, 91.54, 247.69, 97.39, 255.2, 101.15, 265.64, 109.08, 261.89, 98.22, 256.04, 86.53, 248.94, 79.85, 244.76, 74.0, 237.66, 67.73, 232.23, 65.65, 228.89, 63.56, 231.4, 55.62, 229.31, 56.04, 226.38, 62.72, 220.12, 60.63, 215.94, 60.63, 214.27, 61.05, 218.87, 66.06, 216.36, 70.66, 212.6, 75.67, 212.6, 78.59]], u'area': 970.0430999999998, u'iscrowd': 0, u'image_id': 262145, u'bbox': [212.6, 55.62, 53.04, 53.46], u'category_id': 28, u'id': 284647}
       x1 = np.max((0, obj['bbox'][0]))
       y1 = np.max((0, obj['bbox'][1]))
       x2 = np.min((width - 1, x1 + np.max((0, obj['bbox'][2] - 1))))
@@ -260,18 +269,21 @@ class coco(imdb):
     gt_classes = np.zeros((num_objs), dtype=np.int32)
     overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
     seg_areas = np.zeros((num_objs), dtype=np.float32)
-
+    segs = [0] * num_objs;
     # Lookup table to map from COCO category ids to our internal class
     # indices
+#    import pdb
+#    pdb.set_trace()
     coco_cat_id_to_class_ind = dict([(self._class_to_coco_cat_id[cls],
                                       self._class_to_ind[cls])
                                      for cls in self._classes[1:]])
-
     for ix, obj in enumerate(objs):
       cls = coco_cat_id_to_class_ind[obj['category_id']]
       boxes[ix, :] = obj['clean_bbox']
       gt_classes[ix] = cls
       seg_areas[ix] = obj['area']
+      segs[ix] = obj['segmentation'];
+            
       if obj['iscrowd']:
         # Set overlap to -1 for all classes for crowd objects
         # so they will be excluded during training
@@ -280,6 +292,8 @@ class coco(imdb):
         overlaps[ix, cls] = 1.0
 
     ds_utils.validate_boxes(boxes, width=width, height=height)
+    
+    #compress sparse row matrix
     overlaps = scipy.sparse.csr_matrix(overlaps)
     return {'width': width,
             'height': height,
@@ -287,7 +301,8 @@ class coco(imdb):
             'gt_classes': gt_classes,
             'gt_overlaps': overlaps,
             'flipped': False,
-            'seg_areas': seg_areas}
+            'seg_areas': seg_areas,
+            'segs': segs}
 
   def _get_widths(self):
     return [r['width'] for r in self.roidb]
@@ -301,14 +316,20 @@ class coco(imdb):
       oldx2 = boxes[:, 2].copy()
       boxes[:, 0] = widths[i] - oldx2 - 1
       boxes[:, 2] = widths[i] - oldx1 - 1
+      
+      segs = self.roidb[i]['segs'];
+        
       assert (boxes[:, 2] >= boxes[:, 0]).all()
+#      import pdb
+#      pdb.set_trace();
       entry = {'width': widths[i],
                'height': self.roidb[i]['height'],
                'boxes': boxes,
                'gt_classes': self.roidb[i]['gt_classes'],
                'gt_overlaps': self.roidb[i]['gt_overlaps'],
                'flipped': True,
-               'seg_areas': self.roidb[i]['seg_areas']}
+               'seg_areas': self.roidb[i]['seg_areas'],
+               'segs': segs}
 
       self.roidb.append(entry)
     self._image_index = self._image_index * 2
