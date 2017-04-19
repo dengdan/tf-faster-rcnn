@@ -6,6 +6,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+import setproctitle
 
 import _init_paths
 from model.train_val import get_training_roidb, train_net
@@ -106,6 +107,7 @@ if __name__ == '__main__':
 
   # train set
   imdb, roidb = combined_roidb(args.imdb_name)
+  setproctitle.setproctitle(args.imdb_name)
   
   print('{:d} roidb entries'.format(len(roidb)))
 

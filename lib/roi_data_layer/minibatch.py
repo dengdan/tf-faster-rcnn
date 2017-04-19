@@ -15,7 +15,8 @@ import numpy.random as npr
 import cv2
 from model.config import cfg
 from utils.blob import prep_im_for_blob, im_list_to_blob
-
+from datasets.mask_util import draw_ann
+import util
 def get_minibatch(roidb, num_classes):
   
   """Given a roidb, construct a minibatch sampled from it."""
@@ -28,10 +29,10 @@ def get_minibatch(roidb, num_classes):
     format(num_images, cfg.TRAIN.BATCH_SIZE)
 
   # Get the input image blob, formatted for caffe
-  im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
+  im_blob, mask_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
 
-  blobs = {'data': im_blob}
-
+  blobs = {'data': im_blob, 'mask': mask_blob}
+  
   assert len(im_scales) == 1, "Single batch only"
   assert len(roidb) == 1, "Single batch only"
   
@@ -49,29 +50,52 @@ def get_minibatch(roidb, num_classes):
   blobs['im_info'] = np.array(
     [[im_blob.shape[1], im_blob.shape[2], im_scales[0]]],
     dtype=np.float32)
-
   return blobs
 
 def _get_image_blob(roidb, scale_inds):
   """Builds an input blob from the images in the roidb at the specified
   scales.
   """
-  import pdb
-  pdb.set_trace()
   num_images = len(roidb)
   processed_ims = []
+  processed_masks = [];
   im_scales = []
+  
+  #only coco has segs.
+  with_mask = 'segs' in roidb[0];
+  
+  segs = roidb[0]['segs'];
+  """
+  for si1, _seg in enumerate(segs):
+    if not type(_seg) == list:
+      util.io.dump('~/temp_nfs/no-use/data_seg_dict.pkl', [roidb, scale_inds])
+      import pdb
+      pdb.set_trace()
+    else:
+      util.io.dump('~/temp_nfs/no-use/data_seg_list.pkl', [roidb, scale_inds])
+  """
   for i in range(num_images):
     im = cv2.imread(roidb[i]['image'])
+    ori_height, ori_width = im.shape[0:2];
+    
+    target_size = cfg.TRAIN.SCALES[scale_inds[i]]
+    im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size, cfg.TRAIN.MAX_SIZE)
+    if with_mask:                    
+      new_height, new_width = im.shape[0:2];
+      mask = draw_ann(roidb[i], ori_height, ori_width, new_height, new_width);
+
     if roidb[i]['flipped']:
       im = im[:, ::-1, :]
-    target_size = cfg.TRAIN.SCALES[scale_inds[i]]
-    im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size,
-                    cfg.TRAIN.MAX_SIZE)
+      if with_mask:
+        mask = mask[:, ::-1]
+
+
     im_scales.append(im_scale)
     processed_ims.append(im)
-
+    if with_mask:
+      processed_masks.append(mask);
+    
   # Create a blob to hold the input images
-  blob = im_list_to_blob(processed_ims)
-
-  return blob, im_scales
+  blob = im_list_to_blob(processed_ims);
+  mask_blob = im_list_to_blob(processed_masks);
+  return blob, mask_blob, im_scales
