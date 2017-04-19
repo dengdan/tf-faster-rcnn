@@ -64,8 +64,8 @@ def _get_image_blob(roidb, scale_inds):
   #only coco has segs.
   with_mask = 'segs' in roidb[0];
   
-  segs = roidb[0]['segs'];
   """
+  segs = roidb[0]['segs'];
   for si1, _seg in enumerate(segs):
     if not type(_seg) == list:
       util.io.dump('~/temp_nfs/no-use/data_seg_dict.pkl', [roidb, scale_inds])
