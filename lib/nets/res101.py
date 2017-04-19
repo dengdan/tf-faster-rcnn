@@ -172,8 +172,8 @@ class Resnet101(Network):
                                   weights_initializer=initializer,
                                   padding='VALID', activation_fn=None, scope='rpn_bbox_pred')
       if is_training:
-        import pdb
-        pdb.set_trace()
+#        import pdb
+#        pdb.set_trace()
         rois, roi_scores = self._proposal_layer(rpn_cls_prob, rpn_bbox_pred, "rois")
         rpn_labels = self._anchor_target_layer(rpn_cls_score, "anchor")
         # Try to have a determinestic order for the computing graph, for reproducibility
