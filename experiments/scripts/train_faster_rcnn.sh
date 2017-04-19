@@ -32,7 +32,8 @@ case ${DATASET} in
     RATIOS="[0.5,1,2]"
     ;;
   coco)
-    TRAIN_IMDB="coco_2014_train+coco_2014_valminusminival"
+#    TRAIN_IMDB="coco_2014_train+coco_2014_valminusminival"
+    TRAIN_IMDB="coco_2014_minival"
     TEST_IMDB="coco_2014_minival"
     STEPSIZE=350000
     ITERS=490000

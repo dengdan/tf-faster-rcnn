@@ -103,7 +103,7 @@ class coco(imdb):
     Load image ids.
     """
     # numbers: [... n1, n2,...]
-    image_ids = self._COCO.getImgIds()
+    image_ids = self._COCO.getImgIds()[0:100]
     return image_ids
 
   def _get_widths(self):

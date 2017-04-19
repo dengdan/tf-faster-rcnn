@@ -53,7 +53,7 @@ def get_minibatch(roidb, num_classes):
     check_set = set(np.flatten(m));
     np.testing.assert_(len(check_set) <= 2, check_set);
     np.testing.assert_(box_cls in check_set, (box_cls, check_set));
-    
+    mask_blob[:, :, :, bi] = (m == box_cls) * 1
   
   blobs = {'data': im_blob, 'mask': mask_blob}
   blobs['gt_boxes'] = gt_boxes

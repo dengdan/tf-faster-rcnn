@@ -222,10 +222,32 @@ class Network(object):
     return loss_box
   
   def _seg_loss(self, gt_bboxes, gt_masks, seg_scores):
-      seg_loss = 0;
-      if self.with_seg_loss:
-                      
-      return seg_loss;    
+#    import pdb
+#    pdb.set_trace()
+    seg_loss = 0;
+    gt_bboxes = tf.to_int32(gt_bboxes)
+    gt_masks = tf.to_int32(gt_masks)
+    if self.with_seg_loss:
+      i = tf.constant(0)
+      n_boxes = tf.to_int32(tf.size(gt_bboxes) / 5)
+      while_condition = lambda i, sl: tf.less(i, n_boxes)
+      def body(i, seg_loss):
+        bbox = gt_bboxes[:, i];
+        x1, y1, x2, y2, cls = tf.split(bbox, num_or_size_splits=5, axis = 0)
+        import pdb
+        pdb.set_trace()
+        gt_mask = gt_masks[0, :, :, cls]
+        gt_mask = tf.gather_nd(gt_masks, [0, :, :, cls], name=None)
+        gt_mask = tf.image.crop_to_bounding_box(gt_mask, y1, x1, y2 - y1 + 1, x2 - x1 + 1)
+        
+        pred_score = seg_scores[0, :, :, 2*i:2*i+2]
+        pred_score = tf.image.crop_to_bounding_box(pred_score, y1, x1, y2 - y1 + 1, x2 - x1 + 1)
+        softmax_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = pred_score, labels = gt_mask)
+        seg_loss = seg_loss + tf.reduce_mean(softmax_loss);
+        return [i+1, seg_loss];
+      body(0, seg_loss)
+      _, seg_loss = tf.while_loop(while_condition, body, [i, seg_loss], back_prop=True)
+    return seg_loss;    
 
   def _add_losses(self, sigma_rpn=3.0):
     with tf.variable_scope('loss_' + self._tag) as scope:
@@ -265,7 +287,7 @@ class Network(object):
 
 
       # segmentation loss
-      seg_loss = self._seg_loss(self.gt_boxes, self._mask, self.seg_score);
+      seg_loss = self._seg_loss(self._gt_boxes, self._mask, self.seg_score);
         
       self._losses['cross_entropy'] = cross_entropy
       self._losses['loss_box'] = loss_box

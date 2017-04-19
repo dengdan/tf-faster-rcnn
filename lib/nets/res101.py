@@ -217,7 +217,7 @@ class Resnet101(Network):
                          regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
       # layers
       with tf.variable_scope('seg'):
-        num_outputs = self.num_classes * 2
+        num_outputs = self._num_classes * 2
         score_from_ds8 = slim.conv2d(self.net_conv3, num_outputs, [1, 1], trainable=is_training,
                                   weights_initializer=initializer,
                                   padding='VALID', activation_fn=None, scope='score_from_ds8')
@@ -235,11 +235,11 @@ class Resnet101(Network):
                                   weights_initializer=initializer,
                                   padding='VALID', activation_fn=None, scope='score_from_ds32')
         
-        up2_from_ds32 = tf.image.resize_bilinear(score_from_ds32, score_from_ds16.shape[1:-1])
+        up2_from_ds32 = tf.image.resize_bilinear(score_from_ds32, tf.shape(score_from_ds16)[1:-1])
         fuse_ds16 = up2_from_ds32 + score_from_ds16;
-        up2_from_ds16 = tf.image.resize_binlinear(fuse_ds16, score_from_ds8.shape[1:-1]);
+        up2_from_ds16 = tf.image.resize_bilinear(fuse_ds16, tf.shape(score_from_ds8)[1:-1]);
         fuse_ds8 = score_from_ds8 + up2_from_ds16;
-        self.seg_score = tf.image.resize_bilinear(fuse_ds8, self._image.shape[1:-1]);
+        self.seg_score = tf.image.resize_bilinear(fuse_ds8, tf.shape(self._image)[1:-1]);
         
     
     self._predictions["rpn_cls_score"] = rpn_cls_score
