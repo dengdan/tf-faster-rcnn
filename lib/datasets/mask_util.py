@@ -20,12 +20,12 @@ def draw_mask(seg, height, width, t_height, t_width, color):
         m = maskUtils.decode(rle)
         m = m[..., 0]
     m = cv2.resize(m, dsize = (t_height, t_width), interpolation = cv2.INTER_NEAREST)
-    assert(np.min(m) == 0)  
-    assert(np.max(m) == 1)
+    np.testing.assert_(np.min(m) >= 0, ('np.min(m)', np.min(m)))  
+    np.testing.assert_(np.max(m) == 1, ('np.max(m)', np.max(m)))
     m = m * color;
     return m;
     
-def draw_ann(ann, height, width, t_height, t_width):
+def draw_ann_in_one(ann, height, width, t_height, t_width):
   masks = [];
   segs = ann['segs']
   gt_cls = ann['gt_classes']
@@ -44,4 +44,13 @@ def draw_ann(ann, height, width, t_height, t_width):
     non_zeros2 = non_zeros2 * (non_zeros + overlapped);
     ret = ret * non_zeros1 + mask * non_zeros2
   return ret
+
+def draw_ann(ann, height, width, t_height, t_width):
+  masks = [];
+  segs = ann['segs']
+  gt_cls = ann['gt_classes']
+  for si, seg in enumerate(segs):
+    masks.append(draw_mask(seg, height, width, t_height, t_width, int(gt_cls[si])));
+  
+  return masks
 

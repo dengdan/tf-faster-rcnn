@@ -37,7 +37,8 @@ class Network(object):
     self._score_summaries = {}
     self._train_summaries = []
     self._event_summaries = {}
-
+    self.with_seg_loss = False
+    
   def _add_image_summary(self, image, boxes):
     # add back mean
     image += cfg.PIXEL_MEANS
@@ -219,6 +220,12 @@ class Network(object):
       axis=dim
     ))
     return loss_box
+  
+  def _seg_loss(self, gt_bboxes, gt_masks, seg_scores):
+      seg_loss = 0;
+      if self.with_seg_loss:
+                      
+      return seg_loss;    
 
   def _add_losses(self, sigma_rpn=3.0):
     with tf.variable_scope('loss_' + self._tag) as scope:
@@ -256,12 +263,17 @@ class Network(object):
 
       loss_box = self._smooth_l1_loss(bbox_pred, bbox_targets, bbox_inside_weights, bbox_outside_weights)
 
+
+      # segmentation loss
+      seg_loss = self._seg_loss(self.gt_boxes, self._mask, self.seg_score);
+        
       self._losses['cross_entropy'] = cross_entropy
       self._losses['loss_box'] = loss_box
       self._losses['rpn_cross_entropy'] = rpn_cross_entropy
       self._losses['rpn_loss_box'] = rpn_loss_box
-
-      loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box
+      self._losses['seg_loss'] = seg_loss
+            
+      loss = cross_entropy + loss_box + rpn_cross_entropy + rpn_loss_box + seg_loss
       self._losses['total_loss'] = loss
 
       self._event_summaries.update(self._losses)
@@ -271,7 +283,7 @@ class Network(object):
   def create_architecture(self, sess, mode, num_classes, tag=None,
                           anchor_scales=(8, 16, 32), anchor_ratios=(0.5, 1, 2)):
     self._image = tf.placeholder(tf.float32, shape=[self._batch_size, None, None, 3])
-    self._mask = tf.placeholder(tf.float32, shape=[self._batch_size, None, None])
+    self._mask = tf.placeholder(tf.float32, shape=[self._batch_size, None, None, None])
     self._im_info = tf.placeholder(tf.float32, shape=[self._batch_size, 3])
     self._gt_boxes = tf.placeholder(tf.float32, shape=[None, 5])
     self._tag = tag

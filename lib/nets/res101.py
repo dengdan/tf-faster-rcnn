@@ -88,7 +88,8 @@ class Resnet101(Network):
       net = tf.pad(net, [[0, 0], [1, 1], [1, 1], [0, 0]])
       net = slim.max_pool2d(net, [3, 3], stride=2, padding='VALID', scope='pool1')
     return net
-
+  
+            
   def build_network(self, sess, is_training=True):
     # select initializers
     if cfg.TRAIN.TRUNCATED:
@@ -152,14 +153,12 @@ class Resnet101(Network):
     self._act_summaries.append(net_conv5)
     self._layers['conv5_3'] = net_conv5
     
-    with tf.variable_scope('resnet_v1_101', 'resnet_v1_101',
-                           regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
+    with tf.variable_scope('resnet_v1_101', 'resnet_v1_101', regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
       # build the anchors for the image
       self._anchor_component()
 
       # rpn
-      rpn = slim.conv2d(net_conv5, 512, [3, 3], trainable=is_training, weights_initializer=initializer,
-                        scope="rpn_conv/3x3")
+      rpn = slim.conv2d(net_conv5, 512, [3, 3], trainable=is_training, weights_initializer=initializer, scope="rpn_conv/3x3")
       self._act_summaries.append(rpn)
       rpn_cls_score = slim.conv2d(rpn, self._num_anchors * 2, [1, 1], trainable=is_training,
                                   weights_initializer=initializer,
@@ -212,8 +211,36 @@ class Resnet101(Network):
                                        activation_fn=None, scope='bbox_pred')
                                        
     # segmentation
-    net_conv3, net_conv4, _ = mid_output
-    
+    self.net_conv3, self.net_conv4, self.net_conv5 = mid_output
+    self.with_seg_loss = True
+    with tf.variable_scope('resnet_v1_101', 'resnet_v1_101',
+                         regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
+      # layers
+      with tf.variable_scope('seg'):
+        num_outputs = self.num_classes * 2
+        score_from_ds8 = slim.conv2d(self.net_conv3, num_outputs, [1, 1], trainable=is_training,
+                                  weights_initializer=initializer,
+                                  padding='VALID', activation_fn=None, scope='score_from_ds8')
+        score_from_ds16 = slim.conv2d(self.net_conv4, num_outputs, [1, 1], trainable=is_training,
+                                  weights_initializer=initializer,
+                                  padding='VALID', activation_fn=None, scope='score_from_ds16')
+        seg_pool5 = slim.max_pool2d(self.net_conv5, [2, 2], padding='SAME')
+        block_for_seg = resnet_utils.Block('block_for_seg', bottleneck, [(2048, 512, 1)] * 3)
+        seg_fc7, _ = resnet_v1.resnet_v1(seg_pool5,
+                                   [block_for_seg],
+                                   global_pool=False,
+                                   include_root_block=False,
+                                   scope='resnet_v1_101')
+        score_from_ds32 = slim.conv2d(seg_fc7, num_outputs, [1, 1], trainable=is_training,
+                                  weights_initializer=initializer,
+                                  padding='VALID', activation_fn=None, scope='score_from_ds32')
+        
+        up2_from_ds32 = tf.image.resize_bilinear(score_from_ds32, score_from_ds16.shape[1:-1])
+        fuse_ds16 = up2_from_ds32 + score_from_ds16;
+        up2_from_ds16 = tf.image.resize_binlinear(fuse_ds16, score_from_ds8.shape[1:-1]);
+        fuse_ds8 = score_from_ds8 + up2_from_ds16;
+        self.seg_score = tf.image.resize_bilinear(fuse_ds8, self._image.shape[1:-1]);
+        
     
     self._predictions["rpn_cls_score"] = rpn_cls_score
     self._predictions["rpn_cls_score_reshape"] = rpn_cls_score_reshape
@@ -223,7 +250,8 @@ class Resnet101(Network):
     self._predictions["cls_prob"] = cls_prob
     self._predictions["bbox_pred"] = bbox_pred
     self._predictions["rois"] = rois
-
+    self._predictions["seg"] = self.seg_score
+    
     self._score_summaries.update(self._predictions)
 
     return rois, cls_prob, bbox_pred

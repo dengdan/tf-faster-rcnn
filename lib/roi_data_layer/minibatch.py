@@ -31,7 +31,6 @@ def get_minibatch(roidb, num_classes):
   # Get the input image blob, formatted for caffe
   im_blob, mask_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
 
-  blobs = {'data': im_blob, 'mask': mask_blob}
   
   assert len(im_scales) == 1, "Single batch only"
   assert len(roidb) == 1, "Single batch only"
@@ -46,6 +45,17 @@ def get_minibatch(roidb, num_classes):
   gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
   gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :] * im_scales[0]
   gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
+  mask_blob = [:, :, :, gt_inds]  
+  
+  for bi in len(gt_boxes):
+    box_cls = gt_boxes[:, 4]
+    m = mask_blob[:, :, :, bi];
+    check_set = set(np.flatten(m));
+    np.testing.assert_(len(check_set) <= 2, check_set);
+    np.testing.assert_(box_cls in check_set, (box_cls, check_set));
+    
+  
+  blobs = {'data': im_blob, 'mask': mask_blob}
   blobs['gt_boxes'] = gt_boxes
   blobs['im_info'] = np.array(
     [[im_blob.shape[1], im_blob.shape[2], im_scales[0]]],
@@ -87,7 +97,7 @@ def _get_image_blob(roidb, scale_inds):
     if roidb[i]['flipped']:
       im = im[:, ::-1, :]
       if with_mask:
-        mask = mask[:, ::-1]
+        mask = mask[:, ::-1, :]
 
 
     im_scales.append(im_scale)
