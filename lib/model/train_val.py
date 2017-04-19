@@ -237,8 +237,8 @@ class SolverWrapper(object):
       
       # Get training data, one batch at a time
       io_timer.tic()
-      while True:
-          blobs = self.data_layer.forward()
+#      while True:
+      blobs = self.data_layer.forward()
       io_timer.toc()
       
       now = time.time()
