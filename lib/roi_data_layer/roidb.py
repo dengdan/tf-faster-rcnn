@@ -47,3 +47,6 @@ def prepare_roidb(imdb):
     # max overlap > 0 => class should not be zero (must be a fg class)
     nonzero_inds = np.where(max_overlaps > 0)[0]
     assert all(max_classes[nonzero_inds] != 0)
+    
+    if i % 100 == 0:
+        print ("prepare_roidb %d/%d..."%(i, len(imdb.image_index)))
