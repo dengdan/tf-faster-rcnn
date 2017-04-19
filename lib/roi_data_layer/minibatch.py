@@ -45,7 +45,7 @@ def get_minibatch(roidb, num_classes):
   gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
   gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :] * im_scales[0]
   gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
-  mask_blob = [:, :, :, gt_inds]  
+  mask_blob = mask_blob[:, :, :, gt_inds]  
   
   for bi in len(gt_boxes):
     box_cls = gt_boxes[:, 4]
@@ -74,8 +74,8 @@ def _get_image_blob(roidb, scale_inds):
   #only coco has segs.
   with_mask = 'segs' in roidb[0];
   
-  """
   segs = roidb[0]['segs'];
+  """
   for si1, _seg in enumerate(segs):
     if not type(_seg) == list:
       util.io.dump('~/temp_nfs/no-use/data_seg_dict.pkl', [roidb, scale_inds])
@@ -107,5 +107,7 @@ def _get_image_blob(roidb, scale_inds):
     
   # Create a blob to hold the input images
   blob = im_list_to_blob(processed_ims);
-  mask_blob = im_list_to_blob(processed_masks);
+  mask_blob = [];
+  if with_mask:
+    mask_blob = im_list_to_blob(processed_masks);
   return blob, mask_blob, im_scales
