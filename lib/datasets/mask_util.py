@@ -18,8 +18,9 @@ def draw_mask(seg, height, width, t_height, t_width, color):
         else:
             rle = [seg]
         m = maskUtils.decode(rle)
+        np.testing.assert_(m.shape[-1] == 1, 'More than one RLE mask')
         m = m[..., 0]
-    m = cv2.resize(m, dsize = (t_height, t_width), interpolation = cv2.INTER_NEAREST)
+    m = cv2.resize(m, dsize = (t_width, t_height), interpolation = cv2.INTER_NEAREST)
     np.testing.assert_(np.min(m) >= 0, ('np.min(m)', np.min(m)))  
     np.testing.assert_(np.max(m) == 1, ('np.max(m)', np.max(m)))
     m = m * color;
@@ -31,7 +32,7 @@ def draw_ann_in_one(ann, height, width, t_height, t_width):
   gt_cls = ann['gt_classes']
   for si, seg in enumerate(segs):
     masks.append(draw_mask(seg, height, width, t_height, t_width, int(gt_cls[si])));
-  
+   
   ret = masks[0];
   for i in range(1, len(masks)):
     non_zeros1 = ret > 0;
@@ -51,6 +52,7 @@ def draw_ann(ann, height, width, t_height, t_width):
   gt_cls = ann['gt_classes']
   for si, seg in enumerate(segs):
     masks.append(draw_mask(seg, height, width, t_height, t_width, int(gt_cls[si])));
-  
+  masks = np.asarray(masks);  
+  masks = np.transpose(masks, [1, 2, 0]);
   return masks
 

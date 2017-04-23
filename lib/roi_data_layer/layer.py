@@ -14,17 +14,35 @@ from model.config import cfg
 from roi_data_layer.minibatch import get_minibatch
 import numpy as np
 import time
+import Queue
+import util
 
 class RoIDataLayer(object):
   """Fast R-CNN data layer used for training."""
 
-  def __init__(self, roidb, num_classes, random=False):
+  def __init__(self, roidb, num_classes, random=False, prefetch_size = 32, num_threads = 3):
     """Set the roidb to be used by this layer during training."""
     self._roidb = roidb
     self._num_classes = num_classes
     # Also set a random flag
     self._random = random
     self._shuffle_roidb_inds()
+    self.prefetch_size = prefetch_size;
+    self.num_threads = num_threads
+    self.batch_buffer = Queue.Queue(self.prefetch_size)
+
+    for i in xrange(num_threads):
+        name = 't_batch_buffer_producer_%d'%(i);
+        util.thread.create_and_start(
+                    name = name,
+                    daemon = True,
+                    target = self._batch_buffer_producer
+                )
+  def _batch_buffer_producer(self):
+    while True:
+        batch = self._get_next_minibatch()
+        self.batch_buffer.put(batch)
+
 
   def _shuffle_roidb_inds(self):
     """Randomly permute the training roidb."""
@@ -82,5 +100,6 @@ class RoIDataLayer(object):
   def forward(self):
     """Get blobs and copy them into this layer's top blob vector."""
     
-    blobs = self._get_next_minibatch()
+#    blobs = self._get_next_minibatch()
+    blobs = self.batch_buffer.get()
     return blobs

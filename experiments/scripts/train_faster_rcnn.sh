@@ -32,8 +32,8 @@ case ${DATASET} in
     RATIOS="[0.5,1,2]"
     ;;
   coco)
-#    TRAIN_IMDB="coco_2014_train+coco_2014_valminusminival"
-    TRAIN_IMDB="coco_2014_minival"
+    TRAIN_IMDB="coco_2014_train+coco_2014_valminusminival"
+  #  TRAIN_IMDB="coco_2014_minival"
     TEST_IMDB="coco_2014_minival"
     STEPSIZE=350000
     ITERS=490000
@@ -54,7 +54,7 @@ set +x
 if [[ ! -z  ${EXTRA_ARGS_SLUG}  ]]; then
     NET_FINAL=output/${NET}/${TRAIN_IMDB}/${EXTRA_ARGS_SLUG}/${NET}_faster_rcnn_iter_${ITERS}.ckpt
 else
-    NET_FINAL=output/${NET}/${TRAIN_IMDB}/default/${NET}_faster_rcnn_iter_${ITERS}.ckpt
+    NET_FINAL=output/${NET}/${TRAIN_IMDB}/debug/${NET}_faster_rcnn_iter_${ITERS}.ckpt
 fi
 set -x
 

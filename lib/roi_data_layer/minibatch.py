@@ -47,14 +47,15 @@ def get_minibatch(roidb, num_classes):
   gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
   mask_blob = mask_blob[:, :, :, gt_inds]  
   
-  for bi in len(gt_boxes):
-    box_cls = gt_boxes[:, 4]
-    m = mask_blob[:, :, :, bi];
-    check_set = set(np.flatten(m));
-    np.testing.assert_(len(check_set) <= 2, check_set);
+  for bi in xrange(len(gt_boxes)):
+    box_cls = gt_boxes[bi, 4]
+    m = mask_blob[0, ...,  bi];
+    check_set = set(m.ravel());
+    np.testing.assert_(len(check_set) == 2, check_set);
     np.testing.assert_(box_cls in check_set, (box_cls, check_set));
     mask_blob[:, :, :, bi] = (m == box_cls) * 1
-  
+#    img = np.uint8(im_blob[0, ...])
+#    util.plt.show_images(images=[img, m], show= False, path = '~/temp_nfs/no-use/masks/%d.jpg'%(util.get_count()), save= True)
   blobs = {'data': im_blob, 'mask': mask_blob}
   blobs['gt_boxes'] = gt_boxes
   blobs['im_info'] = np.array(
@@ -98,7 +99,6 @@ def _get_image_blob(roidb, scale_inds):
       im = im[:, ::-1, :]
       if with_mask:
         mask = mask[:, ::-1, :]
-
 
     im_scales.append(im_scale)
     processed_ims.append(im)
