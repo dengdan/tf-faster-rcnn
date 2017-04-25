@@ -29,7 +29,7 @@ def im_list_to_blob(ims):
         blob[i, 0:im.shape[0], 0:im.shape[1]] = im
 
   else:
-      blob = np.zeros((num_images, max_shape[0], max_shape[1], max_shape[2]),
+      blob = np.zeros((num_images, max_shape[0], max_shape[1], im.shape[-1]),
                   dtype=np.float32)
       for i in range(num_images):
         im = ims[i]

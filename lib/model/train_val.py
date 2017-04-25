@@ -132,7 +132,6 @@ class SolverWrapper(object):
       # Write the train and validation information to tensorboard
       self.writer = tf.summary.FileWriter(self.tbdir, sess.graph)
       self.valwriter = tf.summary.FileWriter(self.tbvaldir)
-
     # Find previous snapshots if there is any to restore from
     sfiles = os.path.join(self.output_dir, cfg.TRAIN.SNAPSHOT_PREFIX + '_iter_*.ckpt.meta')
     sfiles = glob.glob(sfiles)
@@ -236,11 +235,11 @@ class SolverWrapper(object):
       timer.tic()
       
       # Get training data, one batch at a time
+#      while True:
       io_timer.tic()
- #     while True:
       blobs = self.data_layer.forward()
       io_timer.toc()
-#          print ('forwarding...')
+#      print ('forwarding...')
       
       now = time.time()
       if now - last_summary_time > 1:#cfg.TRAIN.SUMMARY_INTERVAL:

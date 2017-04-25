@@ -51,11 +51,16 @@ def get_minibatch(roidb, num_classes):
     box_cls = gt_boxes[bi, 4]
     m = mask_blob[0, ...,  bi];
     check_set = set(m.ravel());
-    np.testing.assert_(len(check_set) == 2, check_set);
-    np.testing.assert_(box_cls in check_set, (box_cls, check_set));
-    mask_blob[:, :, :, bi] = (m == box_cls) * 1
-#    img = np.uint8(im_blob[0, ...])
-#    util.plt.show_images(images=[img, m], show= False, path = '~/temp_nfs/no-use/masks/%d.jpg'%(util.get_count()), save= True)
+    try:
+      np.testing.assert_(len(check_set) <= 2, check_set);
+      np.testing.assert_(box_cls in check_set, (box_cls, check_set));
+      np.testing.assert_equal(m.shape, im_blob[0, ...].shape[0:-1], '%s != %s'%(m.shape,  im_blob[0, ...].shape[0:-1]))
+    except:      
+      import pdb
+      pdb.set_trace()
+      img = np.uint8(im_blob[0, ...])
+      util.plt.show_images(images=[img, m], show= False, path = '~/temp_nfs/no-use/masks/%d.jpg'%(util.get_count()), save= True)
+    mask_blob[0, :, :, bi] = (m == box_cls) * 1
   blobs = {'data': im_blob, 'mask': mask_blob}
   blobs['gt_boxes'] = gt_boxes
   blobs['im_info'] = np.array(

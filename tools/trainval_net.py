@@ -104,13 +104,13 @@ if __name__ == '__main__':
   pprint.pprint(cfg)
 
   np.random.seed(cfg.RNG_SEED)
-
+  with_mask = args.tag.find('MASK') >= 0;
+  
   # train set
   imdb, roidb = combined_roidb(args.imdb_name)
-  setproctitle.setproctitle(args.imdb_name)
-  
+  setproctitle.setproctitle(args.imdb_name + args.tag)
   print('{:d} roidb entries'.format(len(roidb)))
-
+    
   # output directory where the models are saved
   output_dir = get_output_dir(imdb, args.tag)
   print('Output will be saved to `{:s}`'.format(output_dir))
@@ -129,7 +129,7 @@ if __name__ == '__main__':
   if args.net == 'vgg16':
     net = vgg16(batch_size=cfg.TRAIN.IMS_PER_BATCH)
   elif args.net == 'res101':
-    net = Resnet101(batch_size=cfg.TRAIN.IMS_PER_BATCH)
+    net = Resnet101(batch_size=cfg.TRAIN.IMS_PER_BATCH, with_mask = with_mask)
   else:
     raise NotImplementedError
     

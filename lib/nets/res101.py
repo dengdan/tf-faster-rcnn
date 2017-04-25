@@ -52,8 +52,8 @@ def resnet_arg_scope(is_training=True,
 
 
 class Resnet101(Network):
-  def __init__(self, batch_size=1):
-    Network.__init__(self, batch_size=batch_size)
+  def __init__(self, batch_size=1, with_mask = False):
+    Network.__init__(self, batch_size=batch_size, with_mask = with_mask)
     self._arch = 'res101'
 
   def _crop_pool_layer(self, bottom, rois, name):
@@ -211,35 +211,36 @@ class Resnet101(Network):
                                        activation_fn=None, scope='bbox_pred')
                                        
     # segmentation
-    self.net_conv3, self.net_conv4, self.net_conv5 = mid_output
-    self.with_seg_loss = True
-    with tf.variable_scope('resnet_v1_101', 'resnet_v1_101',
-                         regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
-      # layers
-      with tf.variable_scope('seg'):
-        num_outputs = self._num_classes * 2
-        score_from_ds8 = slim.conv2d(self.net_conv3, num_outputs, [1, 1], trainable=is_training,
-                                  weights_initializer=initializer,
-                                  padding='VALID', activation_fn=None, scope='score_from_ds8')
-        score_from_ds16 = slim.conv2d(self.net_conv4, num_outputs, [1, 1], trainable=is_training,
-                                  weights_initializer=initializer,
-                                  padding='VALID', activation_fn=None, scope='score_from_ds16')
-        seg_pool5 = slim.max_pool2d(self.net_conv5, [2, 2], padding='SAME')
-        block_for_seg = resnet_utils.Block('block_for_seg', bottleneck, [(2048, 512, 1)] * 3)
-        seg_fc7, _ = resnet_v1.resnet_v1(seg_pool5,
-                                   [block_for_seg],
-                                   global_pool=False,
-                                   include_root_block=False,
-                                   scope='resnet_v1_101')
-        score_from_ds32 = slim.conv2d(seg_fc7, num_outputs, [1, 1], trainable=is_training,
-                                  weights_initializer=initializer,
-                                  padding='VALID', activation_fn=None, scope='score_from_ds32')
-        
-        up2_from_ds32 = tf.image.resize_bilinear(score_from_ds32, tf.shape(score_from_ds16)[1:-1])
-        fuse_ds16 = up2_from_ds32 + score_from_ds16;
-        up2_from_ds16 = tf.image.resize_bilinear(fuse_ds16, tf.shape(score_from_ds8)[1:-1]);
-        fuse_ds8 = score_from_ds8 + up2_from_ds16;
-        self.seg_score = tf.image.resize_bilinear(fuse_ds8, tf.shape(self._image)[1:-1]);
+    if self.with_mask:
+        self.net_conv3, self.net_conv4, self.net_conv5 = mid_output
+        self.with_seg_loss = True
+        with tf.variable_scope('resnet_v1_101', 'resnet_v1_101',
+                             regularizer=tf.contrib.layers.l2_regularizer(cfg.TRAIN.WEIGHT_DECAY)):
+          # layers
+          with tf.variable_scope('seg'):
+            num_outputs = self._num_classes * 2
+            score_from_ds8 = slim.conv2d(self.net_conv3, num_outputs, [1, 1], trainable=is_training,
+                                      weights_initializer=initializer,
+                                      padding='VALID', activation_fn=None, scope='score_from_ds8')
+            score_from_ds16 = slim.conv2d(self.net_conv4, num_outputs, [1, 1], trainable=is_training,
+                                      weights_initializer=initializer,
+                                      padding='VALID', activation_fn=None, scope='score_from_ds16')
+            seg_pool5 = slim.max_pool2d(self.net_conv5, [2, 2], padding='SAME')
+            block_for_seg = resnet_utils.Block('block_for_seg', bottleneck, [(2048, 512, 1)] * 3)
+            seg_fc7, _ = resnet_v1.resnet_v1(seg_pool5,
+                                       [block_for_seg],
+                                       global_pool=False,
+                                       include_root_block=False,
+                                       scope='resnet_v1_101')
+            score_from_ds32 = slim.conv2d(seg_fc7, num_outputs, [1, 1], trainable=is_training,
+                                      weights_initializer=initializer,
+                                      padding='VALID', activation_fn=None, scope='score_from_ds32')
+            
+            up2_from_ds32 = tf.image.resize_bilinear(score_from_ds32, tf.shape(score_from_ds16)[1:-1])
+            fuse_ds16 = up2_from_ds32 + score_from_ds16;
+            up2_from_ds16 = tf.image.resize_bilinear(fuse_ds16, tf.shape(score_from_ds8)[1:-1]);
+            fuse_ds8 = score_from_ds8 + up2_from_ds16;
+            self.seg_score = tf.image.resize_bilinear(fuse_ds8, tf.shape(self._image)[1:-1]);
         
     
     self._predictions["rpn_cls_score"] = rpn_cls_score

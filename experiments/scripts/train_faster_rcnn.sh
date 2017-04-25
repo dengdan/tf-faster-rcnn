@@ -33,7 +33,7 @@ case ${DATASET} in
     ;;
   coco)
     TRAIN_IMDB="coco_2014_train+coco_2014_valminusminival"
-  #  TRAIN_IMDB="coco_2014_minival"
+#    TRAIN_IMDB="coco_2014_minival"
     TEST_IMDB="coco_2014_minival"
     STEPSIZE=350000
     ITERS=490000
@@ -54,7 +54,7 @@ set +x
 if [[ ! -z  ${EXTRA_ARGS_SLUG}  ]]; then
     NET_FINAL=output/${NET}/${TRAIN_IMDB}/${EXTRA_ARGS_SLUG}/${NET}_faster_rcnn_iter_${ITERS}.ckpt
 else
-    NET_FINAL=output/${NET}/${TRAIN_IMDB}/debug/${NET}_faster_rcnn_iter_${ITERS}.ckpt
+    NET_FINAL=output/${NET}/${TRAIN_IMDB}/default/${NET}_faster_rcnn_iter_${ITERS}.ckpt
 fi
 set -x
 
@@ -66,9 +66,9 @@ if [ ! -f ${NET_FINAL}.index ]; then
             --imdbval ${TEST_IMDB} \
             --iters ${ITERS} \
             --cfg experiments/cfgs/${NET}.yml \
-            #--tag ${EXTRA_ARGS_SLUG} \
+            --tag ${EXTRA_ARGS_SLUG} \
             --net ${NET} \
-            --set ANCHOR_SCALES ${ANCHORS} ANCHOR_RATIOS ${RATIOS} TRAIN.STEPSIZE ${STEPSIZE} #${EXTRA_ARGS}
+            --set ANCHOR_SCALES ${ANCHORS} ANCHOR_RATIOS ${RATIOS} TRAIN.STEPSIZE ${STEPSIZE} ${EXTRA_ARGS}
     else
         CUDA_VISIBLE_DEVICES=${GPU_ID} time python ./tools/trainval_net.py \
             --weight data/imagenet_weights/${NET}.ckpt \
@@ -77,7 +77,7 @@ if [ ! -f ${NET_FINAL}.index ]; then
             --iters ${ITERS} \
             --cfg experiments/cfgs/${NET}.yml \
             --net ${NET} \
-            --set ANCHOR_SCALES ${ANCHORS} ANCHOR_RATIOS ${RATIOS} TRAIN.STEPSIZE ${STEPSIZE} #${EXTRA_ARGS}
+            --set ANCHOR_SCALES ${ANCHORS} ANCHOR_RATIOS ${RATIOS} TRAIN.STEPSIZE ${STEPSIZE} ${EXTRA_ARGS}
     fi
 fi
 

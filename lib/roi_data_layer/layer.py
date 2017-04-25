@@ -20,7 +20,7 @@ import util
 class RoIDataLayer(object):
   """Fast R-CNN data layer used for training."""
 
-  def __init__(self, roidb, num_classes, random=False, prefetch_size = 32, num_threads = 3):
+  def __init__(self, roidb, num_classes, random=False, prefetch_size = 32, num_threads = 1):
     """Set the roidb to be used by this layer during training."""
     self._roidb = roidb
     self._num_classes = num_classes

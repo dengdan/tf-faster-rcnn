@@ -24,7 +24,7 @@ from model.config import cfg
 
 
 class Network(object):
-  def __init__(self, batch_size=1):
+  def __init__(self, batch_size=1, with_mask = False):
     self._feat_stride = [16, ]
     self._feat_compress = [1. / 16., ]
     self._batch_size = batch_size
@@ -37,7 +37,8 @@ class Network(object):
     self._score_summaries = {}
     self._train_summaries = []
     self._event_summaries = {}
-    self.with_seg_loss = False
+    self.with_mask = with_mask
+    self.with_seg_loss = with_mask
     
   def _add_image_summary(self, image, boxes):
     # add back mean
