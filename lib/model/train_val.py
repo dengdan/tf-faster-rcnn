@@ -107,6 +107,7 @@ class SolverWrapper(object):
       loss = layers['total_loss']
       # Set learning rate and momentum
       lr = tf.Variable(cfg.TRAIN.LEARNING_RATE, trainable=False)
+      tf.summary.scalar('learning_rate', lr)
       momentum = cfg.TRAIN.MOMENTUM
       self.optimizer = tf.train.MomentumOptimizer(lr, momentum)
 
@@ -250,6 +251,7 @@ class SolverWrapper(object):
         # Also check the summary on the validation set
         blobs_val = self.data_layer_val.forward()
         summary_val = self.net.get_summary(sess, blobs_val)
+        
         self.valwriter.add_summary(summary_val, float(iter))
         last_summary_time = now
       else:

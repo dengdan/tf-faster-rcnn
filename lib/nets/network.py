@@ -250,7 +250,7 @@ class Network(object):
         seg_loss = seg_loss + tf.reduce_mean(softmax_loss);
         return [i+1, seg_loss];
       _, seg_loss = tf.while_loop(while_condition, body, [i, seg_loss], back_prop=True)
-      seg_loss = seg_loss / tf.cast(n_boxes, tf.float32);
+      seg_loss = 0.1 * seg_loss / tf.cast(n_boxes, tf.float32);
     return seg_loss;    
 
   def _add_losses(self, sigma_rpn=3.0):
